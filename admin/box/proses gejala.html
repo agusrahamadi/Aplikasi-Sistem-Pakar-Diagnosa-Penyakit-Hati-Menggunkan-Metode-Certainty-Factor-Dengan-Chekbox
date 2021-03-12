@@ -1,0 +1,113 @@
+<?php
+case "inputact":
+$perintah = "SELECT * from t_gejala";
+$minta =mysqli_query($mysqli,$perintah);
+$sql = '';
+$i = 0;
+while($hs=mysqli_fetch_array($minta))
+{
+	if ($_POST['gejala'.$hs['kode_gejala']] == 'true')
+	{
+		if ($sql == '')
+		{
+			$sql = "'$hs[kode_gejala]'";
+		}
+		else
+		{
+			$sql = $sql.",'$hs[kode_gejala]'";
+		}
+	}
+	$i++;
+}
+empty($daftar_penyakit);
+empty($daftar_cf);
+if ($sql != '')
+{
+	$perintah = "SELECT kode_penyakit FROM t_diagnosa WHERE kode_gejala IN ($sql) GROUP BY kode_penyakit ORDER BY kode_penyakit";
+	$minta =mysqli_query($mysqli,$perintah);
+	$kode_penyakit_terbesar = '';
+	$nama_penyakit_terbesar = '';
+	$c = 0;
+	while($hs=mysqli_fetch_array($minta))
+	{
+		$kode_penyakit = $hs['kode_penyakit'];
+		$qryi = "SELECT * FROM t_penyakit WHERE kode_penyakit = '$kode_penyakit'";
+		$qry =mysqli_query($mysqli,$qryi);
+		$dt = mysqli_fetch_array($qry);
+		$nama_penyakit = $dt['nm_penyakit'];
+		$daftar_penyakit[$c] = $hs['kode_penyakit'];
+		$p = "SELECT kode_penyakit, mb, md, kode_gejala FROM t_diagnosa WHERE kode_gejala IN ($sql) AND kode_penyakit = '$kode_penyakit'";
+		$m =mysqli_query($mysqli,$p);
+		$jml = mysqli_num_rows($m);
+		if ($jml == 1)
+		{
+			$h=mysqli_fetch_array($m);
+			$mb = $h['mb'];
+			$md = $h['md'];
+			$cf = $mb - $md;
+			$daftar_cf[$c] = $cf;
+			if (($id_penyakit_terbesar == '') || ($cf_terbesar < $cf))
+			{
+				$cf_terbesar = $cf;
+				$id_penyakit_terbesar = $kode_penyakit;
+				$nama_penyakit_terbesar = $nama_penyakit;
+			}
+		}
+		else if ($jml > 1)
+		{
+			$i = 1;
+			while($h=mysqli_fetch_array($m))
+			{
+				if ($i == 1)
+				{
+					$mblama = $h['mb'];
+					$mdlama = $h['md'];
+					}
+				else if ($i == 2)
+				{
+					$mbbaru = $h['mb'];
+					$mdbaru = $h['md'];
+					$mbsementara = $mblama + ($mbbaru * (1 - $mblama));
+					$mdsementara = $mdlama + ($mdbaru * (1 - $mdlama));
+					if ($jml == 2)
+					{
+						$mb = $mbsementara;
+						$md = $mdsementara;
+						$cf = $mb - $md;
+						$daftar_cf[$c] = $cf;
+						if (($id_penyakit_terbesar == '') || ($cf_terbesar < $cf))
+						{
+							$cf_terbesar = $cf;
+							$id_penyakit_terbesar = $id_penyakit;
+							$nama_penyakit_terbesar = $nama_penyakit;
+						}
+					}
+				}
+				else if ($i >= 3)
+				{
+					$mblama = $mbsementara;
+					$mdlama = $mdsementara;
+					$mbbaru = $h['mb'];
+					$mdbaru = $h['md'];
+					$mbsementara = $mblama + ($mbbaru * (1 - $mblama));
+					$mdsementara = $mdlama + ($mdbaru * (1 - $mdlama));
+					if ($jml == $i)
+					{
+						$mb = $mbsementara;
+						$md = $mdsementara;
+						$cf = $mb - $md;
+						$daftar_cf[$c] = $cf;
+						if (($id_penyakit_terbesar == '') || ($cf_terbesar < $cf))
+						{
+							$cf_terbesar = $cf;
+							$id_penyakit_terbesar = $kode_penyakit;
+							$nama_penyakit_terbesar = $nama_penyakit;
+						}
+					}
+				}
+				$i++;
+			}
+		}
+		$c++;
+	}
+}
